@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RestController
@@ -48,32 +51,24 @@ public class SearchController {
     }
 
 
-    private List<?> list;
+    private volatile List<?> list;
     @GetMapping("/search/studentsandemployees")
     public ResponseEntity<?> multithreadingSearch() throws Exception {
 
-        Thread studentThread = new Thread(() -> {
-            try {
-                list = studentService.getAllStud();
-            } catch (Exception e) {
-                System.out.println("Exception caught here when running student service: " + e);
-            }
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 4, 1000, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+        pool.execute(()->{
+            System.out.println(Thread.currentThread().getName());
+            System.out.println("this is task1");
+            list = studentService.getAllStud();
         });
 
-        Thread empThread = new Thread(() -> {
-            try {
-                Thread.sleep(3000);
-                list = employeeService.getAllEmp();
-            } catch (Exception e) {
-                System.out.println("Exception caught here when running employee service: " + e);
-            }
+        pool.execute(()->{
+            System.out.println(Thread.currentThread().getName());
+            System.out.println("this is task2");
+            list = employeeService.getAllEmp();
         });
 
-        studentThread.start();
-        empThread.start();
-
-        studentThread.join();
-        empThread.join();
+        pool.shutdown();
 
         return new ResponseEntity<>(list, HttpStatus.OK);
     }
