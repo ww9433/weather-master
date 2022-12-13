@@ -9,7 +9,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 public class SearchController {
@@ -40,5 +45,36 @@ public class SearchController {
     @GetMapping(value = "/search/student", params = "ids")
     public ResponseEntity<?> getStudentByIds(@RequestParam List<Integer> ids) {
         return new ResponseEntity<>(studentService.findStudById(ids), HttpStatus.OK);
+    }
+
+
+    private List<?> list;
+    @GetMapping("/search/studentsandemployees")
+    public ResponseEntity<?> multithreadingSearch() throws Exception {
+
+        Thread studentThread = new Thread(() -> {
+            try {
+                list = studentService.getAllStud();
+            } catch (Exception e) {
+                System.out.println("Exception caught here when running student service: " + e);
+            }
+        });
+
+        Thread empThread = new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                list = employeeService.getAllEmp();
+            } catch (Exception e) {
+                System.out.println("Exception caught here when running employee service: " + e);
+            }
+        });
+
+        studentThread.start();
+        empThread.start();
+
+        studentThread.join();
+        empThread.join();
+
+        return new ResponseEntity<>(list, HttpStatus.OK);
     }
 }
